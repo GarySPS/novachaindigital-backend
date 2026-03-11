@@ -78,35 +78,29 @@ async function getSpotUSD(symbol) {
     }
   }
 
-  // --- Check if Crypto (CoinGecko, Binance, Coinbase) ---
-  const cgId = CG_ID[sym];
-  if (cgId) {
+  // --- Check if Crypto (Binance first to match chart, then Coinbase) ---
+  const isCrypto = ["BTC", "ETH", "SOL", "XRP", "TON"].includes(sym);
+  
+  if (isCrypto) {
+    // ----- Primary: Binance -----
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd`;
+      const url = `https://api.binance.com/api/v3/ticker/price?symbol=${sym}USDT`;
       const { data } = await axios.get(url, { timeout: 7000 });
-      const price = Number(data?.[cgId]?.usd);
+      const price = Number(data?.price);
+      if (isFinite(price) && price > 0) return price;
+    } catch {}
+
+    // ----- Fallback: Coinbase -----
+    try {
+      const url = `https://api.coinbase.com/v2/prices/${sym}-USD/spot`;
+      const { data } = await axios.get(url, {
+        timeout: 7000,
+        headers: { "CB-VERSION": "2023-01-01" },
+      });
+      const price = Number(data?.data?.amount);
       if (isFinite(price) && price > 0) return price;
     } catch {}
   }
-
-  // ----- Binance Fallback -----
-  try {
-    const url = `https://api.binance.com/api/v3/ticker/price?symbol=${sym}USDT`;
-    const { data } = await axios.get(url, { timeout: 7000 });
-    const price = Number(data?.price);
-    if (isFinite(price) && price > 0) return price;
-  } catch {}
-
-  // ----- Coinbase Fallback -----
-  try {
-    const url = `https://api.coinbase.com/v2/prices/${sym}-USD/spot`;
-    const { data } = await axios.get(url, {
-      timeout: 7000,
-      headers: { "CB-VERSION": "2023-01-01" },
-    });
-    const price = Number(data?.data?.amount);
-    if (isFinite(price) && price > 0) return price;
-  } catch {}
 
   throw new Error(`LIVE_PRICE_UNAVAILABLE (Crypto/All: ${sym})`);
 }

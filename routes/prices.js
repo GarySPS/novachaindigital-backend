@@ -16,6 +16,17 @@ const CG_ID = {
   toncoin: "toncoin",
 };
 
+// --- Binance Symbols for direct matching ---
+const BINANCE_SYMBOL = {
+  bitcoin: "BTCUSDT",
+  btc: "BTCUSDT",
+  ethereum: "ETHUSDT",
+  tether: "USDT",
+  solana: "SOLUSDT",
+  ripple: "XRPUSDT",
+  toncoin: "TONUSDT",
+};
+
 // --- Commodity Symbols for Twelve Data ---
 const TWELVE_SYMBOL = {
   xau: "XAU/USD",
@@ -131,36 +142,33 @@ router.get("/:symbol", async (req, res) => {
         }
         
     } else if (isCrypto(requestedApiSymbol)) {
-        // --- Fetch Crypto Data using CoinGecko ---
+        // --- Fetch Crypto Data using Binance to match TradingView ---
         console.log(`Identified ${requestedApiSymbol} as Crypto.`);
-        const coingeckoId = CG_ID[requestedApiSymbol];
+        const binanceSym = BINANCE_SYMBOL[requestedApiSymbol];
 
-        if (!coingeckoId) {
+        if (!binanceSym) {
           throw new Error(`Unsupported crypto symbol: ${requestedApiSymbol}`);
         }
 
         try {
-          const cgUrl = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coingeckoId}&order=market_cap_desc&per_page=1&page=1&sparkline=false&price_change_percentage=24h`;
-          console.log(`Fetching CoinGecko data for ${coingeckoId} from: ${cgUrl}`);
-          const { data: cgDataArr } = await axios.get(cgUrl, { timeout: 8000 });
-
-          if (!cgDataArr || cgDataArr.length === 0) throw new Error(`No market data found from CoinGecko for ${coingeckoId}`);
-          const marketData = cgDataArr[0];
+          const binUrl = `https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSym}`;
+          console.log(`Fetching Binance data for ${binanceSym} from: ${binUrl}`);
+          const { data: bData } = await axios.get(binUrl, { timeout: 8000 });
 
           priceData = {
-            price: Number(marketData.current_price),
-            high_24h: Number(marketData.high_24h),
-            low_24h: Number(marketData.low_24h),
-            volume_24h: Number(marketData.total_volume),
-            percent_change_24h: Number(marketData.price_change_percentage_24h),
+            price: Number(bData.lastPrice),
+            high_24h: Number(bData.highPrice),
+            low_24h: Number(bData.lowPrice),
+            volume_24h: Number(bData.quoteVolume),
+            percent_change_24h: Number(bData.priceChangePercent),
           };
           
-        } catch (cgErr) {
-          console.warn(`CoinGecko request failed for ${requestedApiSymbol}: ${cgErr.message}`);
+        } catch (err) {
+          console.warn(`Binance request failed for ${requestedApiSymbol}: ${err.message}`);
         }
 
         if (!priceData || !isFinite(priceData.price) || priceData.price <= 0) {
-          console.warn(`⚠️ CoinGecko failed for ${requestedApiSymbol}. Using synthetic fallback.`);
+          console.warn(`⚠️ Binance failed for ${requestedApiSymbol}. Using synthetic fallback.`);
           priceData = getSyntheticData(requestedApiSymbol); 
         }
 
