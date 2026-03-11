@@ -92,11 +92,14 @@ router.post('/register', async (req, res) => {
       subject: 'NovaChain OTP Verification',
       text: `Hello ${username}, your OTP code is: ${otp}`
     };
-    transporter.sendMail(mailOptions, (err) => {
-      if (err) console.error('❌ OTP email error:', err);
-    });
-
-    res.status(201).json({ message: 'User registered! OTP sent.', userId });
+    
+    try {
+      await transporter.sendMail(mailOptions);
+      res.status(201).json({ message: 'User registered! OTP sent.', userId });
+    } catch (err) {
+      console.error('❌ OTP email error:', err);
+      res.status(500).json({ error: 'Account created, but failed to send OTP email. Please try resending.' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

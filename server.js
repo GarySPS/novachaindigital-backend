@@ -122,3 +122,17 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
+// Keep-Alive Mechanism (Pings the server every 14 minutes)
+const https = require('https');
+
+setInterval(() => {
+  // REPLACE with your actual Render Backend URL
+  const backendUrl = 'https://novachain-backend.onrender.com'; 
+
+  https.get(backendUrl, (res) => {
+    console.log(`Self-ping sent to ${backendUrl}. Status: ${res.statusCode}`);
+  }).on('error', (e) => {
+    console.error(`Self-ping failed: ${e.message}`);
+  });
+}, 14 * 60 * 1000); // 14 minutes (Render sleeps at 15)
