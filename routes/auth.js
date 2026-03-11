@@ -68,11 +68,10 @@ router.post('/register', async (req, res) => {
     if (retries === 10) return res.status(500).json({ error: "Could not assign unique user ID. Please try again." });
 
     // Insert user with custom random ID
-   await pool.query(
-  'INSERT INTO users (id, username, email, password, balance, otp, verified) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-  [userId, username, email, password, 0, otp, false]
-);
-
+    await pool.query(
+      'INSERT INTO users (id, username, email, password, balance, otp, verified) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [userId, username, email, password, 0, otp, false]
+    );
 
     // Insert balances for all coins (multi-coin support)
     const coins = ["USDT", "BTC", "ETH", "SOL", "XRP", "TON"];
