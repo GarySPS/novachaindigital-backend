@@ -196,24 +196,22 @@ router.get("/:symbol", async (req, res) => {
     console.error(`CRITICAL ERROR processing ${requestedApiSymbol}:`, err.message);
     
     if (symbolCache[requestedApiSymbol] && now - symbolCache[requestedApiSymbol].t <= SYMBOL_STALE_OK_MS) {
-      return res.json({
-        symbol: requestedApiSymbol,
-        ...symbolCache[requestedApiSymbol],
-        stale: true
-      });
-    }
+      return res.json({
+        symbol: requestedApiSymbol,
+        ...symbolCache[requestedApiSymbol],
+        stale: true
+      });
+    }
 
-    try {
-      const syntheticData = getSyntheticData(requestedApiSymbol);
-      return res.json({ symbol: requestedApiSymbol, ...syntheticData });
-    } catch (finalErr) {
-      return res.status(503).json({ error: "LIVE_DATA_UNAVAILABLE", symbol: requestedApiSymbol, detail: err.message });
-    }
-  }
+    // REMOVED: Fake Synthetic Data. 
+    // It is better to show "Loading..." on the frontend than a fake price.
+    return res.status(503).json({ 
+      error: "LIVE_DATA_UNAVAILABLE", 
+      symbol: requestedApiSymbol, 
+      detail: err.message 
+    });
+  }
 });
-// --- Other routes (Chart, List) - Keep as they were if needed ---
-// You might need to adjust or remove these if they are no longer used or accurate
-// --- Add this back ---
 
 // Cache for the full list
 let listCache = { t: 0, data: [] };

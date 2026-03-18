@@ -139,41 +139,60 @@ router.post("/", authenticateToken, async (req, res) => {
       received = Number(received.toFixed(coinDecimals("USDT")));
     }
 
-    // balance check
-    const { rows } = await pool.query(
-      "SELECT balance FROM user_balances WHERE user_id = $1 AND coin = $2",
-      [user_id, fromSym]
-    );
-    const balance = Number(rows[0]?.balance || 0);
-    if (!isFinite(balance) || balance < amt) {
-      return res.status(400).json({ error: "Insufficient balance." });
-    }
+    // --- TRANSACTION START ---
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN'); // Start transaction
 
-    // update balances (simple two updates; wrap in transaction if you want strict atomicity)
-    await pool.query(
-      "UPDATE user_balances SET balance = balance - $1 WHERE user_id = $2 AND coin = $3",
-      [amt, user_id, fromSym]
-    );
-    await pool.query(
-      `INSERT INTO user_balances (user_id, coin, balance)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, coin)
-       DO UPDATE SET balance = user_balances.balance + EXCLUDED.balance`,
-      [user_id, toSym, received]
-    );
+      // 1. Balance check (FOR UPDATE locks the row so they can't double-spend)
+      const { rows } = await client.query(
+        "SELECT balance FROM user_balances WHERE user_id = $1 AND coin = $2 FOR UPDATE",
+        [user_id, fromSym]
+      );
+      const balance = Number(rows[0]?.balance || 0);
+      if (!isFinite(balance) || balance < amt) {
+        throw new Error("Insufficient balance.");
+      }
 
-    // record conversion
-    await pool.query(
-      `INSERT INTO conversions (user_id, from_coin, to_coin, amount, received, rate)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [user_id, fromSym, toSym, amt, received, rateUSD]
-    );
+      // 2. Deduct from balance
+      await client.query(
+        "UPDATE user_balances SET balance = balance - $1 WHERE user_id = $2 AND coin = $3",
+        [amt, user_id, fromSym]
+      );
 
-    res.json({ success: true, received, rate: rateUSD });
-  } catch (err) {
-    console.error("Convert error:", err.message || err);
-    res.status(500).json({ error: "Conversion failed." });
-  }
+      // 3. Add to new balance
+      await client.query(
+        `INSERT INTO user_balances (user_id, coin, balance)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, coin)
+         DO UPDATE SET balance = user_balances.balance + EXCLUDED.balance`,
+        [user_id, toSym, received]
+      );
+
+      // 4. Record history
+      await client.query(
+        `INSERT INTO conversions (user_id, from_coin, to_coin, amount, received, rate)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [user_id, fromSym, toSym, amt, received, rateUSD]
+      );
+
+      await client.query('COMMIT'); // Success! Save changes.
+      res.json({ success: true, received, rate: rateUSD });
+
+    } catch (err) {
+      await client.query('ROLLBACK'); // Fail! Undo any deductions.
+      console.error("Convert error:", err.message || err);
+      if (err.message === "Insufficient balance.") {
+        return res.status(400).json({ error: err.message });
+      }
+      res.status(500).json({ error: "Conversion failed." });
+    } finally {
+      client.release(); // Free up the DB connection
+    }
+  } catch (err) {
+    console.error("Convert setup error:", err.message || err);
+    res.status(500).json({ error: "Conversion failed." });
+  }
 });
 
 module.exports = router;
