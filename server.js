@@ -29,11 +29,9 @@ const earnRoutes = require('./routes/earn');
 const app = express();
 
 const allowedOrigins = [
-  'https://novachain-frontend.vercel.app',
+  'https://novachaindigital-frontend.vercel.app',
   'http://localhost:3000',
-  'https://novachain.pro',
-  'https://www.novachain.pro',
-  'https://novachain-frontend-garys-projects-331bf079.vercel.app'
+  'http://localhost:3001'
 ];
 
 app.use(cors({
@@ -128,7 +126,7 @@ const https = require('https');
 
 setInterval(() => {
   // REPLACE with your actual Render Backend URL
-  const backendUrl = 'https://novachain-backend.onrender.com'; 
+  const backendUrl = 'https://novachaindigital-backend.onrender.com';
 
   https.get(backendUrl, (res) => {
     console.log(`Self-ping sent to ${backendUrl}. Status: ${res.statusCode}`);
