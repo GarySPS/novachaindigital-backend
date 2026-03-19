@@ -1,7 +1,10 @@
+//routes>deposit.js
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const crypto = require('crypto');
 
 // --- Create deposit (user, supply screenshot URL, JWT protected) ---
 router.post(
@@ -15,14 +18,17 @@ router.post(
       return res.status(400).json({ error: 'Missing required fields' });
     }
     try {
-      // Insert with 'pending' status!
+      const depositId = crypto.randomInt(1, 2147483647);
+      
+      // We must add 'id' to the INSERT list, and add $1 to the VALUES list
       const result = await pool.query(
-        `INSERT INTO deposits (user_id, coin, amount, address, screenshot, status)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        [user_id, coin, amount, address, screenshot, 'pending']
+        `INSERT INTO deposits (id, user_id, coin, amount, address, screenshot, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [depositId, user_id, coin, amount, address, screenshot, 'pending']
       );
       res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
+      console.error("Deposit insert error:", err);
       res.status(500).json({ error: 'Database error' });
     }
   }

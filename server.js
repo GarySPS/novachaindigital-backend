@@ -134,4 +134,4 @@ setInterval(() => {
     console.error(`Self-ping failed: ${e.message}`);
   });
   
-}, 14 * 60 * 1000); // 14 minutes (Render sleeps at 15)
+}, 14 * 60 * 1000);

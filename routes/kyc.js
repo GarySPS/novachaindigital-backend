@@ -1,9 +1,12 @@
+//routes>kyc.js
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const multer = require('multer');
 const { authenticateToken } = require('../middleware/auth'); // Adjust path if needed
 const supabase = require('../utils/supabaseClient');
+const crypto = require('crypto'); // <-- ADD THIS LINE
 
 
 // Multer in-memory storage (not disk)
@@ -58,16 +61,26 @@ router.post(
       const { data: selfieUrlObj } = supabase.storage.from('kyc').getPublicUrl(selfieFilename);
       const { data: idCardUrlObj } = supabase.storage.from('kyc').getPublicUrl(idCardFilename);
 
-      // Save public URLs to DB
+      // 1. Generate a random ID for the kyc_requests table
+      const kycRequestId = crypto.randomInt(1, 2147483647);
+
+      // 2. Insert the URLs into your dedicated kyc_requests table
       await pool.query(
-        `UPDATE users
-         SET kyc_status = 'pending', kyc_selfie = $1, kyc_id_card = $2
-         WHERE id = $3`,
-        [selfieUrlObj.publicUrl, idCardUrlObj.publicUrl, user_id]
+        `INSERT INTO kyc_requests (id, user_id, selfie, id_card, status)
+         VALUES ($1, $2, $3, $4, 'pending')`,
+        [kycRequestId, user_id, selfieUrlObj.publicUrl, idCardUrlObj.publicUrl]
       );
+
+      // 3. Update the user's overall status in the users table
+      await pool.query(
+        `UPDATE users SET kyc_status = 'pending' WHERE id = $1`,
+        [user_id]
+      );
+
       res.json({ success: true, selfieUrl: selfieUrlObj.publicUrl, idCardUrl: idCardUrlObj.publicUrl });
     } catch (err) {
-      res.status(500).json({ error: 'Database error' });
+      console.error("🔥 KYC ERROR:", err.message);
+      res.status(500).json({ error: 'Database error', detail: err.message });
     }
   }
 );

@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const ADMIN_API_TOKEN = process.env.ADMIN_API_TOKEN || 'yourSecureAdminTokenHere1234';
@@ -28,11 +29,14 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Insufficient balance" });
     }
 
+    const withdrawId = crypto.randomInt(1, 2147483647); // Generate the ID
+
+    // Add 'id' to the INSERT list and $1 to VALUES
     const result = await pool.query(
-      `INSERT INTO withdrawals (user_id, coin, amount, address, status)
-       VALUES ($1, $2, $3, $4, 'pending')
+      `INSERT INTO withdrawals (id, user_id, coin, amount, address, status)
+       VALUES ($1, $2, $3, $4, $5, 'pending')
        RETURNING id`,
-      [user_id, coin, amount, address]
+      [withdrawId, user_id, coin, amount, address]
     );
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {

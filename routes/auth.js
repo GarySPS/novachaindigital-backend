@@ -1,3 +1,5 @@
+//src>routes>auth.js
+
 const bcrypt = require('bcrypt');
 const { authenticateToken } = require('../middleware/auth');
 const express = require('express');
@@ -73,16 +75,16 @@ router.post('/register', async (req, res) => {
   [userId, username, email, password, 0, otp, false]
 );
 
-
     // Insert balances for all coins (multi-coin support)
     const coins = ["USDT", "BTC", "ETH", "SOL", "XRP", "TON"];
     await Promise.all(
-      coins.map((coin) => 
-        pool.query(
-          `INSERT INTO user_balances (user_id, coin, balance) VALUES ($1, $2, 0)`,
-          [userId, coin]
-        )
-      )
+      coins.map((coin) => {
+        const balanceId = crypto.randomInt(1, 2147483647); // Generates a random ID
+        return pool.query(
+          `INSERT INTO user_balances (id, user_id, coin, balance) VALUES ($1, $2, $3, 0)`,
+          [balanceId, userId, coin]
+        );
+      })
     );
 
     // Send OTP Email
