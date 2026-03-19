@@ -29,6 +29,8 @@ const earnRoutes = require('./routes/earn');
 const app = express();
 
 const allowedOrigins = [
+  'https://novachain.digital',
+  'https://www.novachain.digital',
   'https://novachaindigital-frontend.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001'
