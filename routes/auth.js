@@ -25,6 +25,15 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Missing username, email or password' });
   }
   try {
+    // ---------------------------------------------------------
+    // 1. ADD THIS NEW CHECK: Prevent duplicate usernames
+    // ---------------------------------------------------------
+    const { rows: existingUsername } = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [username]);
+    if (existingUsername.length > 0) {
+      return res.status(409).json({ error: 'This username is already taken. Please choose another.' });
+    }
+    // ---------------------------------------------------------
+
     // Check duplicate email
     const { rows: existing } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existing.length > 0) {
