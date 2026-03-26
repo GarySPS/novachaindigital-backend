@@ -1,3 +1,5 @@
+//routes>profile.js
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
@@ -43,12 +45,12 @@ router.get('/', authenticateToken, async (req, res) => {
     const total_usd = Number(balanceRes.rows[0].total_usd) || 0;
 
     let avatarUrl = "/logo192_new.png";
-    if (row.avatar && typeof row.avatar === "string" && row.avatar.length > 0) {
-      // Always serve public URL directly
-      avatarUrl = row.avatar.startsWith("http")
-        ? row.avatar
-        : `https://zgnefojwdijycgcqngke.supabase.co/storage/v1/object/public/avatar/${row.avatar}?t=${Date.now()}`;
-    }
+    if (row.avatar && typeof row.avatar === "string" && row.avatar.length > 0) {
+      // Always serve public URL directly using the dynamic environment variable
+      avatarUrl = row.avatar.startsWith("http")
+        ? row.avatar
+        : `${process.env.SUPABASE_URL}/storage/v1/object/public/avatar/${row.avatar}?t=${Date.now()}`;
+    }
 
     res.json({
       user: {
